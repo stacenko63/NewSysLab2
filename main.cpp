@@ -1,33 +1,25 @@
 #include <signal.h>
 #include <stdlib.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <iostream>
 #include <ctime>
 #include <vector>
 using namespace std;
-
-static void signal_handler(int);
 void sigaction_handle(int signum, siginfo_t *info, void* ctx);
-int pid1, pid2, status, result = 0, count = 1, module = 10;
-bool check = false, isParentWish = true;
-clock_t t;
+int pid1, pid2, result = 0, count = 1, module = 10;
+bool isParentWish = true;
 volatile sig_atomic_t last_sig;
 volatile sig_atomic_t sig_value;
 vector<bool> numbers(21, false);
-
 struct sigaction act;
-
 void sigaction_handle(int signum, siginfo_t *info, void* ctx) {
         sig_value = info->si_value.sival_int;
         last_sig = signum;
 }
-
 void make_a_number() {        //загадать число
     result = rand() % 21 + 1;
     cout << "Загаданное число: " << result << "\n";
 }
-
 int get_value() {
     int index = rand() % 21 + 1;
     while (numbers[index]) {
@@ -36,19 +28,8 @@ int get_value() {
     numbers[index] = true;
     return index;
 }
-
-void set_flags() {
-    for (auto el: numbers) {
-        el = false;
-    }
-}
-
-
-
 void unravel_a_number() {    //отгадать число
-
-    t = clock();
-
+    clock_t t = clock();
     while (true) {
         int tmp = get_value();
         cout << "Попытка " << count++ << ": " << tmp << "\n";
@@ -65,7 +46,9 @@ void unravel_a_number() {    //отгадать число
             cout << "Количество попыток: " << count - 1 << "\n";
             cout << "Затраченное время: " << double(clock() - t) / CLOCKS_PER_SEC << "\n";
             count = 1;
-            set_flags();
+            for (int i = 0; i < numbers.size(); i++) {
+                numbers[i] = false;
+            }
             if (pid2 == 0) {
                 sigqueue(pid1, SIGRTMIN, sigval{tmp});
             }
@@ -75,10 +58,6 @@ void unravel_a_number() {    //отгадать число
             break;
         }
     }
-
-
-
-
 }
 
 int main() {
