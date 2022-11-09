@@ -59,7 +59,56 @@ void unravel_a_number() {    //отгадать число
         }
     }
 }
-
+void work(bool flag) {
+    if ((isParentWish && flag) || (!isParentWish && !flag)) {
+        if (flag) {
+            cout << "Загадывает родительский процесс, угадывает дочерний процесс\nРодительский процесс начал работу!\n";
+        }
+        else {
+            cout << "Загадывает дочерний процесс, угадывает родительский\nДочерний процесс начал работу!\n";
+        }
+        make_a_number();
+        if (flag) {
+            sigqueue(pid2, SIGUSR2, sigval{});
+        }
+        else {
+            sigqueue(pid1, SIGUSR2, sigval{});
+        }
+        while (true) {
+            pause();
+            if (sig_value == result) {
+                if (flag) {
+                    sigqueue(pid2, SIGUSR1, sigval{});
+                }
+                else {
+                    sigqueue(pid1, SIGUSR1, sigval{});
+                }
+                break;
+            }
+            else {
+                if (flag) {
+                    sigqueue(pid2, SIGUSR2, sigval{});
+                }
+                else {
+                    sigqueue(pid1, SIGUSR2, sigval{});
+                }
+            }
+        }
+        pause();
+        if (flag) isParentWish = false;
+        else isParentWish = true;
+    }
+    else
+    {
+        if (flag) cout << "Родительский процесс начал работу!\nЖдем сигнал от дочернего процесса!\n";
+        else cout << "Дочерний процесс начал работу!\nЖдем сигнал от родительского процесса!\n";
+        while (last_sig != SIGUSR2) {}
+        cout << "Сигнал получен!\n";
+        unravel_a_number();
+        if (flag) isParentWish = true;
+        else isParentWish = false;
+    }
+}
 int main() {
     srand(11 + time(NULL));
     pid1 = getpid();
@@ -70,71 +119,14 @@ int main() {
     sigaction(SIGRTMIN, &act, 0);
     cout << "Родительский процесс: " << pid1 << "\n";
     pid2 = fork();
-
     for (int i = 0; i <= 2; i++) {
-
-        if (pid2 != 0) //родительский процесс
-        {
-            if (isParentWish) {
-                cout << "Загадывает родительский процесс, угадывает дочерний процесс\nРодительский процесс начал работу!\n";
-                make_a_number();
-                sigqueue(pid2, SIGUSR2, sigval{});
-                while (true) {
-                    pause();
-                    if (sig_value == result) {
-                        sigqueue(pid2, SIGUSR1, sigval{});
-                        break;
-                    }
-                    else {
-                        sigqueue(pid2, SIGUSR2, sigval{});
-                    }
-                }
-                pause();
-                isParentWish = false;
-            }
-            else
-            {
-                cout << "Родительский процесс начал работу!\nЖдем сигнал от дочернего процесса!\n";
-                while (last_sig != SIGUSR2) {}
-                cout << "Сигнал получен!\n";
-                unravel_a_number();
-                isParentWish = true;
-            }
+        if (pid2 != 0) { //родительский процесс
+            work(true);
         }
-        else //дочерний процесс
-        {
+        else { //дочерний процесс
             srand(time(NULL));
             cout << "Дочерний процесс: " << getpid() << "\n";
-
-            if (!isParentWish)
-            {
-                cout << "Загадывает дочерний процесс, угадывает родительский процесс\nДочерний процесс начал работу!\n";
-                cout << "Дочерний процесс загадывает число\n";
-                make_a_number();
-                sigqueue(pid1, SIGUSR2, sigval{});
-                while (true) {
-                    pause();
-                    if (sig_value == result) {
-                        sigqueue(pid1, SIGUSR1, sigval{});
-                        cout << "Угадал!\n";
-                        break;
-                    }
-                    else {
-                        sigqueue(pid1, SIGUSR2, sigval{});
-                    }
-                }
-                pause();
-                isParentWish = true;
-            }
-            else
-            {
-                cout << "Дочерний процесс начал работу!\nЖдем сигнал от родительского процесса!\n";
-                while (last_sig != SIGUSR2) {}
-                cout << "Сигнал получен!\n";
-                unravel_a_number();
-                isParentWish = false;
-            }
+            work(false);
         }
     }
-
 }
